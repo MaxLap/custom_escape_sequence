@@ -1,4 +1,5 @@
 # frozen_string_literal: true
+
 require_relative "custom_escape_sequence/version"
 
 # Helps processing a string that contains special characters/sequence and has escape sequences to
@@ -19,7 +20,7 @@ require_relative "custom_escape_sequence/version"
 # "hello!! you%" would have a special %, and in the end would be turned into "hello!! you". Since the escape characters
 # did not precede the special character (%), they are left as is instead of being halved.
 class CustomEscapeSequence
-  def initialize(custom_pattern, escape: '\\', default_escape: nil)
+  def initialize(custom_pattern, escape: "\\", default_escape: nil)
     if !escape.is_a?(String) && !default_escape.is_a?(String)
       raise ":escape is not a String, so you must define a default_escape that is a String"
     end
@@ -44,10 +45,10 @@ class CustomEscapeSequence
   # Odd indexed elements may be empty string in the case of consecutive custom sequence or when
   # the string starts or ends with a custom sequence.
   def isolate(string_or_parts)
-    parts = self.isolate_special_sequences(string_or_parts)
+    parts = isolate_special_sequences(string_or_parts)
 
     parts = parts.each_slice(2).map do |raw_part, special_sequence|
-      self.parse_special_sequence(raw_part, special_sequence)
+      parse_special_sequence(raw_part, special_sequence)
     end
 
     self.class.merge_around_nils(parts.flatten)
@@ -57,7 +58,7 @@ class CustomEscapeSequence
   # CustomEscapeSequence.new('%', escape: '!').split("hello%world!%fun!!%stuff! and more!!")
   #    => ["hello", "world%fun!", "stuff! and more!!"]
   def split(string_or_parts)
-    result = self.isolate(string_or_parts)
+    result = isolate(string_or_parts)
     result.values_at(*(0...result.size).step(2))
   end
 
@@ -70,15 +71,14 @@ class CustomEscapeSequence
   # CustomEscapeSequence.new('%', escape: '!').escape("hello%world!%fun!!%stuff! and more!!")
   #    => "hello!%world!!!%fun!!!!!%stuff! and more!!"
   def escape(string_or_parts)
-    parts = self.isolate_special_sequences(string_or_parts)
+    parts = isolate_special_sequences(string_or_parts)
 
     parts = parts.each_slice(2).map do |raw_part, special_sequence|
-      [raw_part, self.escape_special_sequence(special_sequence)]
+      [raw_part, escape_special_sequence(special_sequence)]
     end
 
     parts.flatten.join
   end
-
 
   # Merges the custom_sequences back into a string. Basically the inverse of isolate.
   # Receives an input like isolate's output. (Array, even index are raw parts, odd are custom_sequences)
@@ -88,7 +88,7 @@ class CustomEscapeSequence
     return string_or_parts if string_or_parts.is_a? String
 
     parts = string_or_parts.each_slice(2).map do |raw_part, custom_sequence|
-      self.merge_back_custom_sequence(raw_part, custom_sequence)
+      merge_back_custom_sequence(raw_part, custom_sequence)
     end
 
     result = self.class.merge_around_nils(parts.flatten)
@@ -97,8 +97,7 @@ class CustomEscapeSequence
     result
   end
 
-
-  #protected # I hate protected/private, just painful to debug.
+  # protected # I hate protected/private, just painful to debug.
 
   # If passed a string, escapes the special regex characters of it and turn it into a non-capturing group in a regex.
   # If passed a regex, simply puts its source in a non-capturing group in a regex.
@@ -121,10 +120,10 @@ class CustomEscapeSequence
   # Split the string on the special sequences (not on the custom sequence, that's #isolate's job).
   # So the special sequences are on the odd indexes and the raw parts are on the even indexes.
   def isolate_special_sequences(string_or_parts)
-    if string_or_parts.is_a? String
-      parts = [string_or_parts]
+    parts = if string_or_parts.is_a? String
+      [string_or_parts]
     else
-      parts = string_or_parts
+      string_or_parts
     end
 
     parts = parts.each_slice(2).map do |raw_part, other_custom_sequence|
@@ -145,7 +144,7 @@ class CustomEscapeSequence
     # Using #match#captures to only get the captured escapes without the custom_sequence which was also matched.
     escapes_string = special_sequence.match(@isolate_escape_sequences_re).captures.join
     escapes_array = split_escape_sequences(escapes_string)
-    specials_string = special_sequence[escapes_string.size..-1]
+    specials_string = special_sequence[escapes_string.size..]
     [escapes_array, specials_string]
   end
 
@@ -186,7 +185,7 @@ class CustomEscapeSequence
     return if special_sequence.nil?
     escapes_array, custom_sequence = extract_from_special_sequence(special_sequence)
 
-    escapes_array.map{|e| e+e}.join + @default_escape + custom_sequence
+    escapes_array.map { |e| e + e }.join + @default_escape + custom_sequence
   end
 
   # Merges a custom sequence at the end of previous_raw_part, handling escapes correctly. Basically the inverse of isolate.
@@ -208,7 +207,7 @@ class CustomEscapeSequence
     previous_raw_part = previous_raw_part[0...(previous_raw_part.size - ending_escapes_string.size)]
     ending_escapes_array = split_escape_sequences(ending_escapes_string)
 
-    previous_raw_part = previous_raw_part + ending_escapes_array.map{|s| s+s}.join + custom_sequence
+    previous_raw_part = previous_raw_part + ending_escapes_array.map { |s| s + s }.join + custom_sequence
     [previous_raw_part, nil]
   end
 
