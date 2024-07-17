@@ -54,9 +54,35 @@ class CustomEscapeSequence
     self.class.merge_around_nils(parts.flatten)
   end
 
+  # Receives the result of #isolate and returns an array of arrays resulting from spitting
+  # on the specified special character.
+  # The split is only done on the special (odd index) elements of the array.
+  def self.split_on_isolated(parts, special_character)
+    isolated_parts = self.isolated_parts(parts)
+
+    matching_isolated_indexes = isolated_parts.size.times.select { |i| isolated_parts[i] == special_character }
+
+    current_start_index = 0
+    splits = matching_isolated_indexes.map do |end_isolated_i|
+      used_start_index = current_start_index
+      used_end_index = end_isolated_i * 2
+      current_start_index = used_end_index + 2
+      parts[used_start_index..used_end_index]
+    end
+
+    splits << parts[current_start_index..-1]
+
+    splits
+  end
+
+  def self.isolated_parts(parts)
+    parts.values_at(*parts.each_index.select(&:odd?))
+  end
+
   # Split the string on the unescaped custom sequences. Only the raw parts of the string are returned.
   # CustomEscapeSequence.new('%', escape: '!').split("hello%world!%fun!!%stuff! and more!!")
   #    => ["hello", "world%fun!", "stuff! and more!!"]
+  # Only really useful if you have a single special character
   def split(string_or_parts)
     result = isolate(string_or_parts)
     result.values_at(*(0...result.size).step(2))
